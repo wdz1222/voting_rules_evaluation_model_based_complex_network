@@ -98,18 +98,31 @@ class GOC:
                 else:
                     ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*(dis-self.r[j])
 
-    def delete_invalid_ip(self, tri, ip_attr):
+    @staticmethod
+    def delete_invalid_ip(tri, ip_attr):
         del_id = list()
-
+        for i in range(len(tri)):
+            if np.max(ip_attr[tri[i, :], :]) < 0.5:
+                print('---')
+                del_id.append(i)
+        return np.delete(tri, del_id, axis=0)
 
     def BTST_weber_improved(self):
         tri = self.tri.copy()
+        print(len(tri))
         ip = self.intersection_point.copy()
         # ip_attr: 第一列为支持度，第二列为妥协度
         ip_attr = np.zeros([len(ip), 2], dtype=np.float)
+
+        # 初始化参数信息并且当全局不存在可行解时结束程序,若存在可行解，将不满足约束
+        # 条件的三角形删除
         self.caculate_ip_attr(ip, ip_attr)
         if np.max(ip_attr[:, 0]) < 0.5:
             print('no solution')
+            return -1
+        tri = self.delete_invalid_ip(tri, ip_attr)
+        tri_len = len(tri)
+        # while tri_len > 0:
 
 
 
