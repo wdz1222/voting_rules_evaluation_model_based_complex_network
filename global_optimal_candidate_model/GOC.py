@@ -17,6 +17,7 @@ class GOC:
         self.w = self.create_w()
         self.intersection_point = 0
         self.tri = 0
+        self.epsilon = 10e-5
 
     def create_w(self):
         '''
@@ -114,31 +115,42 @@ class GOC:
                 v.append(ip_attr[self.tri[i, j], 1])
                 tri_value_i.append(v)
             tri_value.append(tri_value_i)
-        return tri_value
+        return np.array(tri_value)
 
     @staticmethod
     def delete_invalid_tri(tri_value):
         del_tri_id = list()
-        print(tri_value[0][:, 1])
         for i in range(len(tri_value)):
             if np.max(tri_value[i][:, 2]) < 0.5:
                 del_tri_id.append(i)
-        np.delete(tri_value, del_tri_id, axis=0)
-        return tri_value
+        return np.delete(tri_value, del_tri_id, axis=0)
+
+    def caculate_LB_UB(self, tri_value):
+        tri_value_len = len(tri_value)
+        tri_bounds = np.zeros([tri_value_len, 2], dtype=np.float)
+        for i in range(tri_value_len):
+            tri_bounds[i, 0] = np.min(tri_value[i][:, 3])
+            tri_bounds[i, 1] = np.max(tri_value[i][:, 3])
+        largest_LB = np.max(tri_bounds[:, 0])
+        del_tri_id = list()
+        for i in range(len(tri_value)):
+            if tri_bounds[i, 1] < largest_LB*(1+self.epsilon):
+                del_tri_id.append(i)
+        return np.delete(tri_value, del_tri_id, axis=0)
 
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
-        print(len(tri_value))
         tri_value = self.delete_invalid_tri(tri_value)
-        print(tri_value)
-        # if np.max(ip_attr[:, 0]) < 0.5:
-        #     print('no solution')
-        #     return -1
-        # tri = self.delete_invalid_ip(tri, ip_attr)
-        # tri_len = len(tri)
-        # while tri_len > 0:
-
-
+        len_tri = len(tri_value)
+        if len_tri == 0:
+            print("no solution")
+            return -1
+        while len_tri != 0:
+            tri_value = self.caculate_LB_UB(tri_value)
+            len_tri = len(tri_value)
+            if len_tri == 0:
+                print("no solution")
+                return -1
 
 goc = GOC(10, 3, 0, 0.5)
 goc.delaunay()
