@@ -87,45 +87,59 @@ class GOC:
         # plt.plot(self.intersection_point[:, 0], self.intersection_point[:, 1], 'o')
         # plt.show()
 
-    def caculate_ip_attr(self, ip, ip_attr):
+    def caculate_ip_attr(self):
         # 初始化可行解参数
-        for i in range(len(ip)):
+        len_ip = len(self.intersection_point)
+        ip_attr = np.zeros([len_ip, 2], dtype=np.float)
+        for i in range(len_ip):
             for j in range(self.n):
-                dis = norm(self.voters[j, :] - ip[i, :])
+                dis = norm(self.voters[j, :] - self.intersection_point[i, :])
                 if dis <= self.r[j]:
                     ip_attr[i, 0] = ip_attr[i, 0] + self.w[j]
                     ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*dis
                 else:
                     ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*(dis-self.r[j])
+        return ip_attr
+
+    def tri_to_triValue(self):
+        ip_attr = self.caculate_ip_attr()
+        tri_value = list()
+        for i in range(len(self.tri)):
+            tri_value_i = list()
+            for j in range(3):
+                v = list()
+                v.append(self.intersection_point[self.tri[i, j], 0])
+                v.append(self.intersection_point[self.tri[i, j], 1])
+                v.append(ip_attr[self.tri[i, j], 0])
+                v.append(ip_attr[self.tri[i, j], 1])
+                tri_value_i.append(v)
+            tri_value.append(tri_value_i)
+        return tri_value
 
     @staticmethod
-    def delete_invalid_ip(tri, ip_attr):
-        del_id = list()
-        for i in range(len(tri)):
-            if np.max(ip_attr[tri[i, :], :]) < 0.5:
-                print('---')
-                del_id.append(i)
-        return np.delete(tri, del_id, axis=0)
+    def delete_invalid_tri(tri_value):
+        del_tri_id = list()
+        print(tri_value[0][:, 1])
+        for i in range(len(tri_value)):
+            if np.max(tri_value[i][:, 2]) < 0.5:
+                del_tri_id.append(i)
+        np.delete(tri_value, del_tri_id, axis=0)
+        return tri_value
 
     def BTST_weber_improved(self):
-        tri = self.tri.copy()
-        print(len(tri))
-        ip = self.intersection_point.copy()
-        # ip_attr: 第一列为支持度，第二列为妥协度
-        ip_attr = np.zeros([len(ip), 2], dtype=np.float)
-
-        # 初始化参数信息并且当全局不存在可行解时结束程序,若存在可行解，将不满足约束
-        # 条件的三角形删除
-        self.caculate_ip_attr(ip, ip_attr)
-        if np.max(ip_attr[:, 0]) < 0.5:
-            print('no solution')
-            return -1
-        tri = self.delete_invalid_ip(tri, ip_attr)
-        tri_len = len(tri)
+        tri_value = self.tri_to_triValue()
+        print(len(tri_value))
+        tri_value = self.delete_invalid_tri(tri_value)
+        print(tri_value)
+        # if np.max(ip_attr[:, 0]) < 0.5:
+        #     print('no solution')
+        #     return -1
+        # tri = self.delete_invalid_ip(tri, ip_attr)
+        # tri_len = len(tri)
         # while tri_len > 0:
 
 
 
-goc = GOC(50, 3, 0, 1)
+goc = GOC(10, 3, 0, 0.5)
 goc.delaunay()
 goc.BTST_weber_improved()
