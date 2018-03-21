@@ -132,11 +132,13 @@ class GOC:
             tri_bounds[i, 0] = np.min(tri_value[i][:, 3])
             tri_bounds[i, 1] = np.max(tri_value[i][:, 3])
         largest_LB = np.max(tri_bounds[:, 0])
+        largest_LB_loc = np.argmax(tri_bounds[:, 0])
+        solution = tri_value[largest_LB_loc][np.argmin(tri_value[largest_LB_loc][:, 3])]
         del_tri_id = list()
         for i in range(len(tri_value)):
             if tri_bounds[i, 1] < largest_LB*(1+self.epsilon):
                 del_tri_id.append(i)
-        return np.delete(tri_value, del_tri_id, axis=0)
+        return np.delete(tri_value, del_tri_id, axis=0), solution
 
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
@@ -146,11 +148,10 @@ class GOC:
             print("no solution")
             return -1
         while len_tri != 0:
-            tri_value = self.caculate_LB_UB(tri_value)
+            tri_value, solution = self.caculate_LB_UB(tri_value)
             len_tri = len(tri_value)
             if len_tri == 0:
-                print("no solution")
-                return -1
+                return solution
 
 goc = GOC(10, 3, 0, 0.5)
 goc.delaunay()
