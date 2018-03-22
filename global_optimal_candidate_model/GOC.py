@@ -103,6 +103,10 @@ class GOC:
         return ip_attr
 
     def tri_to_triValue(self):
+        '''
+        每个节点被转换为四元组（X坐标，y坐标，支持度，妥协度）
+        :return:
+        '''
         ip_attr = self.caculate_ip_attr()
         tri_value = list()
         for i in range(len(self.tri)):
@@ -127,16 +131,19 @@ class GOC:
 
     def caculate_LB_UB(self, tri_value):
         tri_value_len = len(tri_value)
-        tri_bounds = np.zeros([tri_value_len, 2], dtype=np.float)
+        tri_bounds = np.zeros(tri_value_len, dtype=np.float)
+        largest_LB = -1
+        print(np.min(tri_value[:][:, 3]))
         for i in range(tri_value_len):
-            tri_bounds[i, 0] = np.min(tri_value[i][:, 3])
-            tri_bounds[i, 1] = np.max(tri_value[i][:, 3])
-        largest_LB = np.max(tri_bounds[:, 0])
-        largest_LB_loc = np.argmax(tri_bounds[:, 0])
-        solution = tri_value[largest_LB_loc][np.argmin(tri_value[largest_LB_loc][:, 3])]
-        del_tri_id = list()
+            tri_bounds[i] = np.max(tri_value[i][:, 3])
+            lb_loc = np.argmin(tri_value[i][:, 3])
+            lb = np.min(tri_value[i][:, 3])
+            if tri_value[i][lb_loc, 2] >= 0.5 and lb > largest_LB:
+                largest_LB = np.min(tri_value[i][:, 3])
+                solution = tri_value[i][lb_loc]
+            del_tri_id = list()
         for i in range(len(tri_value)):
-            if tri_bounds[i, 1] < largest_LB*(1+self.epsilon):
+            if tri_bounds[i] < largest_LB*(1+self.epsilon):
                 del_tri_id.append(i)
         return np.delete(tri_value, del_tri_id, axis=0), solution
 
@@ -176,6 +183,7 @@ class GOC:
         tri_value = self.tri_to_triValue()
         tri_value = self.delete_invalid_tri(tri_value)
         len_tri = len(tri_value)
+        solution = np.array([0, 0, 0, 9999])
         if len_tri == 0:
             print("no solution")
             return -1
