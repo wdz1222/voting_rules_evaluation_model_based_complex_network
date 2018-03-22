@@ -140,6 +140,38 @@ class GOC:
                 del_tri_id.append(i)
         return np.delete(tri_value, del_tri_id, axis=0), solution
 
+    def midpoint(self, x, y):
+        point = list()
+        loc = (x + y) / 2
+        sup = 0.0
+        obj_value = 0.0
+        for i in range(self.n):
+            dis = norm(self.voters[i, :] - loc)
+            if dis <= self.r[i]:
+                sup = sup + self.w[i]
+                obj_value = obj_value + self.w[i] * dis
+            else:
+                obj_value = obj_value + self.w[i] * (dis - self.r[i])
+        point.append(loc[0])
+        point.append(loc[1])
+        point.append(sup)
+        point.append(obj_value)
+        return point
+
+    def divide_triangle(self, tri_value):
+        triangle = tri_value
+        for i in range(len(tri_value)):
+            tri = tri_value[i]
+            p1 = self.midpoint(tri[0, [0, 1]], tri[1, [0, 1]])
+            p2 = self.midpoint(tri[0, [0, 1]], tri[2, [0, 1]])
+            p3 = self.midpoint(tri[1, [0, 1]], tri[2, [0, 1]])
+            tri1 = np.array([[list(tri[0]), p1, p2]])
+            tri2 = np.array([[list(tri[1]), p1, p3]])
+            tri3 = np.array([[list(tri[2]), p2, p3]])
+            tri4 = np.array([[p1, p2, p3]])
+            triangle = np.concatenate((triangle, tri1, tri2, tri3, tri4))
+        return triangle
+
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
         tri_value = self.delete_invalid_tri(tri_value)
@@ -147,12 +179,18 @@ class GOC:
         if len_tri == 0:
             print("no solution")
             return -1
-        while len_tri != 0:
+        while True:
             tri_value, solution = self.caculate_LB_UB(tri_value)
+            print(solution)
             len_tri = len(tri_value)
             if len_tri == 0:
                 return solution
+            tri_value = self.divide_triangle(tri_value)
+            tri_value = self.delete_invalid_tri(tri_value)
+            len_tri = len(tri_value)
+            print(len_tri)
+
 
 goc = GOC(10, 3, 0, 0.5)
 goc.delaunay()
-goc.BTST_weber_improved()
+print(goc.BTST_weber_improved())
