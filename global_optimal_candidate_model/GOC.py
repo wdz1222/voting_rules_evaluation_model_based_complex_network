@@ -179,11 +179,17 @@ class GOC:
             triangle = np.concatenate((triangle, tri1, tri2, tri3, tri4))
         return triangle
 
+    def caculate_lowest_LB(self, tri_value):
+        tri_value_len = len(tri_value)
+        LB_value = 10000
+        for i in range(tri_value):
+
+
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
         tri_value = self.delete_invalid_tri(tri_value)
         len_tri = len(tri_value)
-        solution = np.array([0, 0, 0, 9999])
+        solution_temp = np.array([0, 0, 0, 9999])
         if len_tri == 0:
             print("no solution")
             return -1
