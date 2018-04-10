@@ -180,29 +180,29 @@ class GOC:
         return triangle
 
     def caculate_lowest_LB(self, tri_value):
-        tri_value_len = len(tri_value)
         LB_value = 10000
-        for i in range(tri_value):
-
+        solution = 0
+        for tri in tri_value:
+            for point in tri:
+                if point[2] >= 0.5 and point[3] <= LB_value:
+                    LB_value = point[3]
+                    solution = point.copy()
+        return LB_value, solution
 
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
         tri_value = self.delete_invalid_tri(tri_value)
-        len_tri = len(tri_value)
-        solution_temp = np.array([0, 0, 0, 9999])
-        if len_tri == 0:
-            print("no solution")
-            return -1
+        if len(tri_value) == 0:
+            return np.zeros(4) - 1
+        LB_value = 9999999
         while True:
-            tri_value, solution = self.caculate_LB_UB(tri_value)
-            print(solution)
-            len_tri = len(tri_value)
-            if len_tri == 0:
+            LB_value_current, solution = self.caculate_lowest_LB(tri_value)
+            print('LB_value_current=', LB_value_current)
+            if abs(LB_value - LB_value_current) <= self.epsilon:
                 return solution
+            LB_value = LB_value_current
             tri_value = self.divide_triangle(tri_value)
             tri_value = self.delete_invalid_tri(tri_value)
-            len_tri = len(tri_value)
-            print(len_tri)
 
 
 goc = GOC(10, 3, 0, 0.5)
