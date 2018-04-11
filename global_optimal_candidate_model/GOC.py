@@ -102,6 +102,16 @@ class GOC:
                     ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*(dis-self.r[j])
         return ip_attr
 
+    def caculate_sup_and_cpms(self, point):
+        attr = np.zeros(2)
+        for j in range(self.n):
+            dis = norm(self.voters[j, :] - self.intersection_point[i, :])
+            if dis <= self.r[j]:
+                ip_attr[i, 0] = ip_attr[i, 0] + self.w[j]
+                ip_attr[i, 1] = ip_attr[i, 1] + self.w[j] * dis
+            else:
+                ip_attr[i, 1] = ip_attr[i, 1] + self.w[j] * (dis - self.r[j])
+
     def tri_to_triValue(self):
         '''
         每个节点被转换为四元组（X坐标，y坐标，支持度，妥协度）
@@ -204,7 +214,23 @@ class GOC:
             tri_value = self.divide_triangle(tri_value)
             tri_value = self.delete_invalid_tri(tri_value)
 
+    def global_approval_candidate(self):
+
+    def weber(self):
+        solution = np.zeros(2)
+        while True:
+            current_solution = np.zeros(2)
+            stemp = 0
+            for i in range(self.n):
+                dis = norm(solution - self.voters[i])
+                current_solution += (self.w[i] * self.voters[i]) / dis
+                stemp += self.w[i] / dis
+            current_solution = current_solution / stemp
+            if norm(current_solution - solution) <= self.epsilon:
+                return current_solution
+            solution = current_solution
 
 goc = GOC(10, 3, 0, 0.5)
-goc.delaunay()
-print(goc.BTST_weber_improved())
+# goc.delaunay()
+# goc.BTST_weber_improved()
+print('weber_solution = ', goc.weber())
