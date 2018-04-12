@@ -219,8 +219,8 @@ class GOC:
         LB_value = 9999999
         while True:
             LB_value_current, solution = self.caculate_lowest_LB(tri_value)
-            print('LB_value_current=', LB_value_current)
-            print('Largest_sup = ', solution[2])
+            # print('LB_value_current=', LB_value_current)
+            # print('Largest_sup = ', solution[2])
             if abs(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
@@ -235,8 +235,8 @@ class GOC:
         LB_value = 9999999
         while True:
             tri_value, solution, LB_value_current = self.caculate_largest_sup(tri_value)
-            print('LB_value_current=', LB_value_current)
-            print('Largest_sup = ', solution[2])
+            # print('LB_value_current=', LB_value_current)
+            # print('Largest_sup = ', solution[2])
             if abs(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
@@ -258,15 +258,40 @@ class GOC:
             solution = current_solution
 
     def approval_and_condorcet(self):
-        attrs = np.zeros(self.m, 2)
+        attrs = np.zeros([self.m, 2])
         for i in range(self.m):
             attrs[i] = self.caculate_sup_and_cpms(self.candidates[i])
-        approval_winner = np.argmax(attrs[:, 0])
+        aw_loc = np.argmax(attrs[:, 0])
+        approval_winner = np.append(self.candidates[aw_loc], attrs[aw_loc])
+        condorcet_matrix = np.zeros([self.m, self.m])
+        for i in range(self.m):
+            for j in range(i, self.m):
+                if i == j:
+                    condorcet_matrix[i, j] = 100
+                    continue
+                for z in range(self.n):
+                    dis1 = norm(self.candidates[i] - self.voters[z])
+                    dis2 = norm(self.candidates[j] - self.voters[z])
+                    if dis1 < dis2:
+                        condorcet_matrix[i, j] += self.w[z]
+                    elif dis1 > dis2:
+                        condorcet_matrix[j, i] += self.w[z]
+                    else:
+                        condorcet_matrix[i, j] += self.w[z]
+                        condorcet_matrix[j, i] += self.w[z]
+        con_loc = np.argmax(np.min(condorcet_matrix, axis=1))
+        condorcet_winner = np.append(self.candidates[con_loc], attrs[con_loc])
+        return approval_winner, condorcet_winner
+
 
 goc = GOC(10, 3, 0, 0.5)
+approval_winner, condorcet_winner = goc.approval_and_condorcet()
+print('approval_winner = ', approval_winner)
+print('condorcet_winner = ', condorcet_winner)
+weber_solution = goc.weber()
+print('weber_solution = ', weber_solution)
 goc.delaunay()
-# goc.BTST_weber_improved()
-# print('weber_solution = ', goc.weber())
-goc.global_approval_candidate()
-print('------------------')
-goc.BTST_weber_improved()
+weber_improved_solution = goc.BTST_weber_improved()
+print('weber_improved_solution = ', weber_improved_solution)
+ga_solution = goc.global_approval_candidate()
+print('ga_solution = ', ga_solution)
