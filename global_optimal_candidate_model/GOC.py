@@ -93,24 +93,19 @@ class GOC:
         len_ip = len(self.intersection_point)
         ip_attr = np.zeros([len_ip, 2], dtype=np.float)
         for i in range(len_ip):
-            for j in range(self.n):
-                dis = norm(self.voters[j, :] - self.intersection_point[i, :])
-                if dis <= self.r[j]:
-                    ip_attr[i, 0] = ip_attr[i, 0] + self.w[j]
-                    ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*dis
-                else:
-                    ip_attr[i, 1] = ip_attr[i, 1] + self.w[j]*(dis-self.r[j])
+            ip_attr[i, :] = self.caculate_sup_and_cpms(self.intersection_point[i, :])
         return ip_attr
 
     def caculate_sup_and_cpms(self, point):
         attr = np.zeros(2)
         for j in range(self.n):
-            dis = norm(self.voters[j, :] - self.intersection_point[i, :])
+            dis = norm(self.voters[j, :] - point)
             if dis <= self.r[j]:
-                ip_attr[i, 0] = ip_attr[i, 0] + self.w[j]
-                ip_attr[i, 1] = ip_attr[i, 1] + self.w[j] * dis
+                attr[0] = attr[0] + self.w[j]
+                attr[1] = attr[1] + self.w[j] * dis
             else:
-                ip_attr[i, 1] = ip_attr[i, 1] + self.w[j] * (dis - self.r[j])
+                attr[1] = attr[1] + self.w[j] * (dis - self.r[j])
+        return attr
 
     def tri_to_triValue(self):
         '''
@@ -199,6 +194,23 @@ class GOC:
                     solution = point.copy()
         return LB_value, solution
 
+    def caculate_largest_sup(self, tri_value):
+        tri_len = len(tri_value)
+        tri_sup_bound = np.zeros([tri_len, 2])
+        for i in range(tri_len):
+            tri_sup_bound[i, 0] = np.max(tri_value[i][:, 2])
+            tri_sup_bound[i, 1] = np.argmax(tri_value[i][:, 2])
+        preserve_tri_id = np.where(tri_sup_bound[:, 0] == np.max(tri_sup_bound[:, 0]))[0]
+        LB = 9999999
+        for i in preserve_tri_id:
+            # print(tri_value[i][int(tri_sup_bound[i, 1])])
+            loc = int(tri_sup_bound[i, 1])
+            if tri_value[i][loc, 3] <= LB:
+                LB = tri_value[i][loc, 3]
+                solution = tri_value[i][loc]
+        tri_value = tri_value[preserve_tri_id]
+        return tri_value, solution, LB
+
     def BTST_weber_improved(self):
         tri_value = self.tri_to_triValue()
         tri_value = self.delete_invalid_tri(tri_value)
@@ -208,6 +220,7 @@ class GOC:
         while True:
             LB_value_current, solution = self.caculate_lowest_LB(tri_value)
             print('LB_value_current=', LB_value_current)
+            print('Largest_sup = ', solution[2])
             if abs(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
@@ -215,6 +228,20 @@ class GOC:
             tri_value = self.delete_invalid_tri(tri_value)
 
     def global_approval_candidate(self):
+        tri_value = self.tri_to_triValue()
+        tri_value = self.delete_invalid_tri(tri_value)
+        if len(tri_value) == 0:
+            return np.zeros(4) - 1
+        LB_value = 9999999
+        while True:
+            tri_value, solution, LB_value_current = self.caculate_largest_sup(tri_value)
+            print('LB_value_current=', LB_value_current)
+            print('Largest_sup = ', solution[2])
+            if abs(LB_value - LB_value_current) <= self.epsilon:
+                return solution
+            LB_value = LB_value_current
+            tri_value = self.divide_triangle(tri_value)
+            tri_value = self.delete_invalid_tri(tri_value)
 
     def weber(self):
         solution = np.zeros(2)
@@ -227,10 +254,19 @@ class GOC:
                 stemp += self.w[i] / dis
             current_solution = current_solution / stemp
             if norm(current_solution - solution) <= self.epsilon:
-                return current_solution
+                return np.append(current_solution, self.caculate_sup_and_cpms(current_solution))
             solution = current_solution
 
+    def approval_and_condorcet(self):
+        attrs = np.zeros(self.m, 2)
+        for i in range(self.m):
+            attrs[i] = self.caculate_sup_and_cpms(self.candidates[i])
+        approval_winner = np.argmax(attrs[:, 0])
+
 goc = GOC(10, 3, 0, 0.5)
-# goc.delaunay()
+goc.delaunay()
 # goc.BTST_weber_improved()
-print('weber_solution = ', goc.weber())
+# print('weber_solution = ', goc.weber())
+goc.global_approval_candidate()
+print('------------------')
+goc.BTST_weber_improved()
