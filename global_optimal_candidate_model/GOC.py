@@ -284,14 +284,43 @@ class GOC:
         return approval_winner, condorcet_winner
 
 
-goc = GOC(10, 3, 0, 0.5)
-approval_winner, condorcet_winner = goc.approval_and_condorcet()
-print('approval_winner = ', approval_winner)
-print('condorcet_winner = ', condorcet_winner)
-weber_solution = goc.weber()
-print('weber_solution = ', weber_solution)
-goc.delaunay()
-weber_improved_solution = goc.BTST_weber_improved()
-print('weber_improved_solution = ', weber_improved_solution)
-ga_solution = goc.global_approval_candidate()
-print('ga_solution = ', ga_solution)
+def corr_of_voter_num_and_validity_in_weber(voter_number):
+    iter_num = 200
+    file_name = 'table1_weber_'+str(voter_number)+'.txt'
+    with open('data/table1/'+file_name, 'a') as f:
+        for i in range(iter_num):
+            goc = GOC(voter_number, 3, 0, 1)
+            weber_solution = goc.weber()
+            print('weber_solution = ', weber_solution)
+            f.writelines([str(weber_solution[0]), ' ', str(weber_solution[1]), ' ', str(weber_solution[2]), ' ',
+                          str(weber_solution[3]), '\n'])
+
+
+def corr_of_voter_num_and_validity_in_improved_weber(voter_number, pdmin, pdmax):
+    iter_num = 200
+    file_name = 'table1_improved_weber_'+str(voter_number)+'_'+str(pdmin)+'_'+str(pdmax)+'.txt'
+    with open('data/table1/'+file_name, 'a') as f:
+        for i in range(iter_num):
+            print(i)
+            goc = GOC(voter_number, 3, pdmin, pdmax)
+            goc.delaunay()
+            solution = goc.BTST_weber_improved()
+            print('solution = ', solution)
+            f.writelines([str(solution[0]), ' ', str(solution[1]), ' ', str(solution[2]), ' ',
+                          str(solution[3]), '\n'])
+
+
+# corr_of_voter_num_and_validity_in_weber(500)
+corr_of_voter_num_and_validity_in_improved_weber(20, 0.1, 0.4)
+
+# goc = GOC(20, 3, 0, 0.5)
+# approval_winner, condorcet_winner = goc.approval_and_condorcet()
+# print('approval_winner = ', approval_winner)
+# print('condorcet_winner = ', condorcet_winner)
+# weber_solution = goc.weber()
+# print('weber_solution = ', weber_solution)
+# goc.delaunay()
+# weber_improved_solution = goc.BTST_weber_improved()
+# print('weber_improved_solution = ', weber_improved_solution)
+# ga_solution = goc.global_approval_candidate()
+# print('ga_solution = ', ga_solution)
