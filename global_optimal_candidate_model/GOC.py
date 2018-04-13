@@ -17,7 +17,7 @@ class GOC:
         self.w = self.create_w()
         self.intersection_point = 0
         self.tri = 0
-        self.epsilon = 10e-5
+        self.epsilon = 10e-4
 
     def create_w(self):
         '''
@@ -185,14 +185,27 @@ class GOC:
         return triangle
 
     def caculate_lowest_LB(self, tri_value):
-        LB_value = 10000
-        solution = 0
-        for tri in tri_value:
-            for point in tri:
-                if point[2] >= 0.5 and point[3] <= LB_value:
-                    LB_value = point[3]
-                    solution = point.copy()
-        return LB_value, solution
+        tri_len = len(tri_value)
+        tris_LB = np.zeros([tri_len, 2])
+        for i in range(tri_len):
+            tris_LB[i, 0] = np.min(tri_value[i][:, 3])
+            tris_LB[i, 1] = np.argmin(tri_value[i][:, 3])
+        LB = 9999
+        UB = -1
+        solution = np.zeros(4) - 1
+        for i in range(tri_len):
+            loc = int(tris_LB[i, 1])
+            if tri_value[i][loc, 2] >= 0.5:
+                if tri_value[i][loc, 3] <= LB:
+                    LB = tri_value[i][loc, 3]
+                    solution = tri_value[i][loc].copy()
+                elif tri_value[i][loc, 3] >= UB:
+                    UB = tri_value[i][loc, 3]
+        delete_id = []
+        for i in range(tri_len):
+            if tris_LB[i, 0] > LB+(UB-LB)/3:
+                delete_id.append(i)
+        return np.delete(tri_value, delete_id, axis=0), LB, solution
 
     def caculate_largest_sup(self, tri_value):
         tri_len = len(tri_value)
@@ -207,7 +220,7 @@ class GOC:
             loc = int(tri_sup_bound[i, 1])
             if tri_value[i][loc, 3] <= LB:
                 LB = tri_value[i][loc, 3]
-                solution = tri_value[i][loc]
+                solution = tri_value[i][loc].copy()
         tri_value = tri_value[preserve_tri_id]
         return tri_value, solution, LB
 
@@ -217,15 +230,19 @@ class GOC:
         if len(tri_value) == 0:
             return np.zeros(4) - 1
         LB_value = 9999999
+        itr_num = 0
         while True:
-            LB_value_current, solution = self.caculate_lowest_LB(tri_value)
-            # print('LB_value_current=', LB_value_current)
-            # print('Largest_sup = ', solution[2])
+            tri_value, LB_value_current, solution = self.caculate_lowest_LB(tri_value)
             if abs(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
             tri_value = self.divide_triangle(tri_value)
             tri_value = self.delete_invalid_tri(tri_value)
+            print(len(tri_value))
+            itr_num += 1
+            if itr_num > 4:
+                return solution
+
 
     def global_approval_candidate(self):
         tri_value = self.tri_to_triValue()
@@ -284,12 +301,12 @@ class GOC:
         return approval_winner, condorcet_winner
 
 
-def corr_of_voter_num_and_validity_in_weber(voter_number):
+def corr_of_voter_num_and_validity_in_weber(voter_number, pdmin, pdmax):
     iter_num = 200
-    file_name = 'table1_weber_'+str(voter_number)+'.txt'
+    file_name = 'table1_weber_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
     with open('data/table1/'+file_name, 'a') as f:
         for i in range(iter_num):
-            goc = GOC(voter_number, 3, 0, 1)
+            goc = GOC(voter_number, 3, pdmin, pdmax)
             weber_solution = goc.weber()
             print('weber_solution = ', weber_solution)
             f.writelines([str(weber_solution[0]), ' ', str(weber_solution[1]), ' ', str(weber_solution[2]), ' ',
@@ -310,8 +327,8 @@ def corr_of_voter_num_and_validity_in_improved_weber(voter_number, pdmin, pdmax)
                           str(solution[3]), '\n'])
 
 
-# corr_of_voter_num_and_validity_in_weber(500)
-corr_of_voter_num_and_validity_in_improved_weber(20, 0.1, 0.4)
+# corr_of_voter_num_and_validity_in_weber(500, 0, 1)
+corr_of_voter_num_and_validity_in_improved_weber(40, 0.1, 0.4)
 
 # goc = GOC(20, 3, 0, 0.5)
 # approval_winner, condorcet_winner = goc.approval_and_condorcet()
