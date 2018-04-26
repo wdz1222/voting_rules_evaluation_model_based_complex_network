@@ -17,7 +17,7 @@ class GOC:
         self.w = self.create_w()
         self.intersection_point = 0
         self.tri = 0
-        self.epsilon = 10e-4
+        self.epsilon = 10e-3
 
     def create_w(self):
         '''
@@ -186,34 +186,28 @@ class GOC:
 
     def caculate_lowest_LB(self, tri_value):
         tri_len = len(tri_value)
-        tris_LB = np.zeros([tri_len, 2])
-        for i in range(tri_len):
-            tris_LB[i, 0] = np.min(tri_value[i][:, 3])
-            tris_LB[i, 1] = np.argmin(tri_value[i][:, 3])
         LB = 9999
-        UB = -1
+        LB_loc = 0
         solution = np.zeros(4) - 1
         for i in range(tri_len):
-            loc = int(tris_LB[i, 1])
-            if tri_value[i][loc, 2] >= 0.5:
-                if tri_value[i][loc, 3] <= LB:
-                    LB = tri_value[i][loc, 3]
-                    solution = tri_value[i][loc].copy()
-                elif tri_value[i][loc, 3] >= UB:
-                    UB = tri_value[i][loc, 3]
-        delete_id = []
-        for i in range(tri_len):
-            if tris_LB[i, 0] > LB+(UB-LB)/3:
-                delete_id.append(i)
-        return np.delete(tri_value, delete_id, axis=0), LB, solution
+            for j in range(3):
+                if tri_value[i][j, 2] >= 0.5:
+                    if tri_value[i][j, 3] <= LB:
+                        LB = tri_value[i][j, 3]
+                        solution = tri_value[i][j].copy()
+                        LB_loc = i
+        return np.array([tri_value[LB_loc]]), LB, solution
 
     def caculate_largest_sup(self, tri_value):
         tri_len = len(tri_value)
         tri_sup_bound = np.zeros([tri_len, 2])
+        maxsup = 0
         for i in range(tri_len):
             tri_sup_bound[i, 0] = np.max(tri_value[i][:, 2])
+            if tri_sup_bound[i, 0] >= maxsup:
+                maxsup = tri_sup_bound[i, 0]
             tri_sup_bound[i, 1] = np.argmax(tri_value[i][:, 2])
-        preserve_tri_id = np.where(tri_sup_bound[:, 0] == np.max(tri_sup_bound[:, 0]))[0]
+        preserve_tri_id = np.where(tri_sup_bound[:, 0] == maxsup)[0]
         LB = 9999999
         for i in preserve_tri_id:
             # print(tri_value[i][int(tri_sup_bound[i, 1])])
@@ -222,6 +216,7 @@ class GOC:
                 LB = tri_value[i][loc, 3]
                 solution = tri_value[i][loc].copy()
         tri_value = tri_value[preserve_tri_id]
+        print(len(tri_value))
         return tri_value, solution, LB
 
     def BTST_weber_improved(self):
@@ -233,16 +228,11 @@ class GOC:
         itr_num = 0
         while True:
             tri_value, LB_value_current, solution = self.caculate_lowest_LB(tri_value)
-            if abs(LB_value - LB_value_current) <= self.epsilon:
+            if norm(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
             tri_value = self.divide_triangle(tri_value)
             tri_value = self.delete_invalid_tri(tri_value)
-            print(len(tri_value))
-            itr_num += 1
-            if itr_num > 4:
-                return solution
-
 
     def global_approval_candidate(self):
         tri_value = self.tri_to_triValue()
@@ -254,7 +244,7 @@ class GOC:
             tri_value, solution, LB_value_current = self.caculate_largest_sup(tri_value)
             # print('LB_value_current=', LB_value_current)
             # print('Largest_sup = ', solution[2])
-            if abs(LB_value - LB_value_current) <= self.epsilon:
+            if norm(LB_value - LB_value_current) <= self.epsilon:
                 return solution
             LB_value = LB_value_current
             tri_value = self.divide_triangle(tri_value)
@@ -301,34 +291,79 @@ class GOC:
         return approval_winner, condorcet_winner
 
 
-def corr_of_voter_num_and_validity_in_weber(voter_number, pdmin, pdmax):
+def caculate_RE(c, a, w, iw, ga):
+    return np.array([c/w, c/iw, c/ga, a/w, a/iw, a/ga])
+
+
+def validity_experiment(voter_number, pdmin, pdmax):
     iter_num = 200
-    file_name = 'table1_weber_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
-    with open('data/table1/'+file_name, 'a') as f:
-        for i in range(iter_num):
-            goc = GOC(voter_number, 3, pdmin, pdmax)
-            weber_solution = goc.weber()
-            print('weber_solution = ', weber_solution)
-            f.writelines([str(weber_solution[0]), ' ', str(weber_solution[1]), ' ', str(weber_solution[2]), ' ',
+    file_name1 = 'weber_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    file_name2 = 'improved_weber_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    file_name3 = 'global_approval_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    file_name4 = 'RE_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    file_name5 = 'approval_winner_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    file_name6 = 'condorcet_winner_' + str(voter_number) + '_' + str(pdmin) + '_' + str(pdmax) + '.txt'
+    for z in range(iter_num):
+        goc = GOC(voter_number, 3, pdmin, pdmax)
+        weber_solution = goc.weber()
+        goc.delaunay()
+        weber_improved_solution = goc.BTST_weber_improved()
+        global_approval_solution = goc.global_approval_candidate()
+        approval_winner, condorcet_winner = goc.approval_and_condorcet()
+        print(z)
+        print('approval_winner = ', approval_winner)
+        print('condorcet_winner = ', condorcet_winner)
+        print('weber_solution = ', weber_solution)
+        print('weber_improved_solution = ', weber_improved_solution)
+        print('ga_solution = ', global_approval_solution)
+        print('-------------------------------------------------------------------------------')
+        with open('data/table/' + file_name1, 'a') as f1:
+            f1.writelines([str(weber_solution[0]), ' ', str(weber_solution[1]), ' ', str(weber_solution[2]), ' ',
                           str(weber_solution[3]), '\n'])
+        with open('data/table/' + file_name2, 'a') as f2:
+            f2.writelines([str(weber_improved_solution[0]), ' ', str(weber_improved_solution[1]), ' ', str(weber_improved_solution[2]), ' ',
+                           str(weber_improved_solution[3]), '\n'])
+        with open('data/table/' + file_name3, 'a') as f3:
+            f3.writelines([str(global_approval_solution[0]), ' ', str(global_approval_solution[1]), ' ', str(global_approval_solution[2]), ' ',
+                           str(global_approval_solution[3]), '\n'])
+        RE = caculate_RE(condorcet_winner[3], approval_winner[3], weber_solution[3], weber_improved_solution[3], global_approval_solution[3])
+        with open('data/table/' + file_name4, 'a') as f4:
+            f4.writelines([str(RE[0]), ' ', str(RE[1]), ' ', str(RE[2]), ' ', str(RE[3]), ' ', str(RE[4]), ' ', str(RE[5]) + '\n'])
+        with open('data/table/' + file_name5, 'a') as f5:
+            f5.writelines([str(approval_winner[0]), ' ', str(approval_winner[1]), ' ', str(approval_winner[2]), ' ',
+                           str(approval_winner[3]), '\n'])
+        with open('data/table/' + file_name6, 'a') as f6:
+            f6.writelines([str(condorcet_winner[0]), ' ', str(condorcet_winner[1]), ' ', str(condorcet_winner[2]), ' ',
+                           str(condorcet_winner[3]), '\n'])
 
 
-def corr_of_voter_num_and_validity_in_improved_weber(voter_number, pdmin, pdmax):
-    iter_num = 200
-    file_name = 'table1_improved_weber_'+str(voter_number)+'_'+str(pdmin)+'_'+str(pdmax)+'.txt'
-    with open('data/table1/'+file_name, 'a') as f:
-        for i in range(iter_num):
-            print(i)
-            goc = GOC(voter_number, 3, pdmin, pdmax)
-            goc.delaunay()
-            solution = goc.BTST_weber_improved()
-            print('solution = ', solution)
-            f.writelines([str(solution[0]), ' ', str(solution[1]), ' ', str(solution[2]), ' ',
-                          str(solution[3]), '\n'])
+def table1(model_name):
+    num = [20, 40, 100, 200, 500]
+    sup_domain = [[0.1, 0.4], [0.7, 1], [0, 1]]
+    for n in num:
+        print('voter_number = ', n)
+        for s in sup_domain:
+            file_name = '_'.join([model_name, str(n), str(s[0]), str(s[1])])
+            file_path = 'data/table/' + file_name + '.txt'
+            data = np.loadtxt(file_path)
+            validity = len(np.where(data[:, 2] >= 0.5)[0]) / 200.0
+            print('[%f, %f]: %f' % (s[0], s[1], validity))
 
 
+table1('global_approval')
 # corr_of_voter_num_and_validity_in_weber(500, 0, 1)
-corr_of_voter_num_and_validity_in_improved_weber(40, 0.1, 0.4)
+# num = [20, 40, 100, 200, 500]
+# sup_domain = [[0.1, 0.4], [0.7, 1], [0, 1]]
+# for z in range(5):
+#     for t in range(3):
+#         validity_experiment(num[z], sup_domain[t][0], sup_domain[t][1])
+#         print('successful')
+# corr_of_voter_num_and_validity_in_global_approval(num[0], sup_domain[2][0], sup_domain[2][1])
+# for i in range(5):
+#     for j in range(3):
+#         corr_of_voter_num_and_validity_in_global_approval(num[i], sup_domain[j][0], sup_domain[j][1])
+# for i in range(3):
+#     corr_of_voter_num_and_validity_in_improved_weber(500, sup_domain[i][0], sup_domain[i][1])
 
 # goc = GOC(20, 3, 0, 0.5)
 # approval_winner, condorcet_winner = goc.approval_and_condorcet()
